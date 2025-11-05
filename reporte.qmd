@@ -1,0 +1,46 @@
+---
+title: "Informe Estadístico"
+format: html
+execute:
+  echo: false
+params:
+  data_path: null
+  var_cual_param: null  
+  var_cuan1_param: null 
+  var_cuan2_param: null 
+  color_param: "blue"   
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(readxl)
+library(kableExtra)
+library(formattable)
+datos <- readRDS(params$data_path)
+```
+
+## Informe sobre créditos aperturados en una entidad financiera
+
+En las siguientes líneas se resume la información de las `r nrow(datos)` solicitudes de créditos aperturadas en las Coop. Paquito en el periodo entre `r min(datos$FECHAADJUDICACION)` y `r max(datos$FECHAADJUDICACION)`
+
+### Créditos otorgados a nivel de provincia
+
+```{r}
+#| include: false
+res01 <- datos %>% group_by(PROVINCIA_DOMICILIO) %>% summarise(Creditos = n(), Monto = mean(MONTO_OTORGADO)) %>% mutate(Porcentaje = round(100*Creditos/sum(Creditos),2)) %>% arrange(desc(Creditos))
+```
+
+Las tres provincias con mayor número de créditos son: `r res01$PROVINCIA_DOMICILIO[1]`, `r res01$PROVINCIA_DOMICILIO[2]` y `r res01$PROVINCIA_DOMICILIO[3]` con el `r paste0(res01$Porcentaje[1], "%")`, `r paste0(res01$Porcentaje[2], "%")` y `r paste0(res01$Porcentaje[3], "%")`, respectivamente.
+
+Por otra parte, se comparte los montos promedio de créditos solicitados en cada provincia:
+
+```{r}
+#| echo: false
+tb01 <- res01 %>% arrange(desc(Monto)) %>% select(PROVINCIA_DOMICILIO, Monto) %>% mutate(Monto = paste("$", round(Monto, 2)))
+colnames(tb01) <- c("Provincia", "Monto")
+tb01 %>% kable(caption = "Resumen de montos promedio de crédito por Provincia") %>% 
+      kable_paper(full_width = F, font_size = 18) %>% 
+      row_spec(0, bold = T, color = "white", background = "#1FA123") %>% 
+      row_spec(1:3, bold = T, color = "white", background = "#224EC7")
+```
