@@ -38,6 +38,9 @@ fluidPage(
                           h1("Registros de la base de datos"),
                           tableOutput("TablaVariable"),
                           hr(),
+                          h1("Tabla en Rango de Edades"),
+                          tableOutput("TablaRangoEdad"),
+                          hr(),
                           h1("Número de créditos otorgados por Provincia"),
                           tableOutput("CreditosXProv")
                  ),
@@ -64,4 +67,5 @@ fluidPage(
       )
     )
   )
+
 )
