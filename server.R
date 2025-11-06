@@ -3,6 +3,9 @@ library(tidyverse)
 library(readxl)
 library(kableExtra)
 library(formattable)
+library(lubridate)
+library(MASS)
+library(RColorBrewer)
 library(quarto)
 
 # Define server logic required to draw a histogram
@@ -37,13 +40,104 @@ function(input, output, session) {
     return(t01)
   })
   
+  # ==== EMELY  
+  #======GRÁFICO DE DISPERSIÓN: Edad vs. Monto Otorgado ====
   output$Grafico02 <- renderPlot({
-    t02 <- datos() %>% select(input$VarCuan, input$VarCuan2)
-    colnames(t02) <- c("Variable1", "Variable2")
+  
+    # Verificamos que las variables existan
+    req("FECHANACIMIENTO" %in% names(datos()), "MONTO_OTORGADO" %in% names(datos()))
     
-    t02 <- t02 %>% ggplot(aes(x=Variable1, y=Variable2)) + geom_point(fill = input$colx)
-    return(t02)
+    # Crear variable edad (en años)
+    t02 <- datos() %>%
+      mutate(EDAD = as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25) %>%
+      filter(!is.na(EDAD), !is.na(MONTO_OTORGADO))
+    
+    # Gráfico de dispersión
+    ggplot(t02, aes(x = EDAD, y = MONTO_OTORGADO)) +
+      geom_point(color = input$colx, alpha = 0.6, size = 3) +
+      labs(title = "Relación entre Edad del Solicitante y Monto Otorgado",
+           x = "Edad (años)",
+           y = "Monto otorgado") +
+      theme_minimal(base_size = 13) +
+      theme(plot.title = element_text(hjust = 0.5, color = "#132b60", face = "bold"))
   })
+  
+  # === SELECCIONAR PROVINCIA ===
+  output$ProvinciaUI <- renderUI({
+    req(datos())
+    provincias <- sort(unique(datos()$PROVINCIA_DOMICILIO))
+    selectInput("provincia_sel", "Seleccione la provincia:",
+                choices = provincias,
+                selected = provincias[1])
+  })
+  
+  # === GRÁFICO DE PASTEL POR PROVINCIA ===
+  output$Grafico03 <- renderPlot({
+    req(input$provincia_sel)
+    
+    # Filtrar por provincia seleccionada
+    datos_filtrados <- datos() %>%
+      filter(PROVINCIA_DOMICILIO == input$provincia_sel)
+    
+    # Crear tabla de frecuencias por tipo de crédito
+    tabla_tipos <- table(datos_filtrados$TIPO)
+    
+    # Validar que existan datos
+    validate(
+      need(length(tabla_tipos) > 0, "No existen registros para la provincia seleccionada.")
+    )
+    
+    # Calcular porcentajes
+    porcentajes <- round(100 * tabla_tipos / sum(tabla_tipos), 1)
+    etiquetas <- paste0(porcentajes, "%")  # ← solo el porcentajeetas <- paste0(names(tabla_tipos), " (", porcentajes, "%)")
+    
+    # Colores suaves tipo pastel
+    colores_pastel <- brewer.pal(n = length(tabla_tipos), "Set3")
+  
+  # Ajustar márgenes para dejar espacio a la derecha
+     par(mar = c(1, 1, 2, 1))  # margen derecho grande para la leyenda
+    
+    # Crear gráfico de pastel base
+    pie(tabla_tipos,
+        labels = etiquetas,
+        col = colores_pastel[seq_along(tabla_tipos)],
+        main = paste("Distribución de tipos de crédito en", toupper(input$provincia_sel)),
+        cex = 0.9,
+        border = "black")
+    })
+  
+  output$LeyendaPastel <- renderUI({
+    req(input$provincia_sel)
+    
+    datos_filtrados <- datos() %>%
+      filter(PROVINCIA_DOMICILIO == input$provincia_sel)
+    
+    tabla_tipos <- table(datos_filtrados$TIPO)
+    colores_pastel <- brewer.pal(n = length(tabla_tipos), "Set3")
+    
+    df_leyenda <- data.frame(
+      Tipo = names(tabla_tipos),
+      Color = colores_pastel[seq_along(tabla_tipos)]
+    )
+    
+    tags$div(
+      style = "font-size:0.85em;",
+      tags$h4("Tipo de crédito", style = "text-align:center; color:#132b60;"),
+      lapply(1:nrow(df_leyenda), function(i) {
+        tags$div(
+          style = "display:flex; align-items:center; margin-bottom:4px;",
+          tags$div(
+            style = paste("width:20px; height:20px; background-color:", df_leyenda$Color[i],
+                          "; margin-right:8px; border:1px solid #aaa;")
+          ),
+          tags$span(df_leyenda$Tipo[i], style = "font-size:0.9em;")
+        )
+      })
+    )
+  })
+  
+  
+  #-------------
   
   output$TablaVariable <- function(){
     res01 <- datos() %>% select(IDENTIFICACION, FECHAADJUDICACION, ESTADO_CIVIL, MONTO_OTORGADO)
@@ -83,7 +177,7 @@ function(input, output, session) {
   
   output$descargar_pdf <- downloadHandler(
     filename = function() {
-      paste0("Informe_Estadistico_", Sys.Date(), ".pdf")
+      paste0("Informe_Estadistico_", Sys.Date(), ".html")
     },
     content = function(file) {
       temp_data <- tempfile(fileext = ".rds")
