@@ -138,14 +138,30 @@ function(input, output, session) {
   
   
   #-------------
-  
-  output$TablaVariable <- function(){
-    res01 <- datos() %>% select(IDENTIFICACION, FECHAADJUDICACION, ESTADO_CIVIL, MONTO_OTORGADO)
-    res01 %>% kable() %>% kable_styling(font_size = 11, full_width = FALSE) %>%
-      row_spec(0, background = "#132b60", color = "#ffffff",) %>% 
+
+  #------------------------ PRIMERA TABLA ANI--------------------- 
+ output$TablaVariableANITA <- function(){
+    req(datos())  
+    res01 <- datos() %>%
+      mutate(
+        EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25)
+      ) %>%
+      select(
+        NUM_ID,
+        EDAD,
+        TIPO,
+        NIVEL_EDUCACION
+      )
+    
+    res01 %>%
+      kable(
+        align = "c",
+        caption = "Tabla de Edad, Tipo y Nivel Educativo por NUM_ID"
+      ) %>%
+      kable_styling(font_size = 11, full_width = FALSE) %>%
+      row_spec(0, background = "#132b60", color = "#ffffff") %>%
       scroll_box(width = "700px", height = "300px")
   }
-  
   output$CreditosXProv <- function(){
     res02 <- datos() %>% group_by(PROVINCIA_DOMICILIO) %>% summarise(Registros = n()) %>% 
       mutate(PORCENTAJE = percent(Registros/sum(Registros))) %>% arrange(desc(Registros))
@@ -210,4 +226,5 @@ function(input, output, session) {
   )
   
   
+
 }
