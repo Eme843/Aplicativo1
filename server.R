@@ -162,6 +162,45 @@ function(input, output, session) {
       row_spec(0, background = "#132b60", color = "#ffffff") %>%
       scroll_box(width = "700px", height = "300px")
   }
+
+
+  #----------------RANGO DE EDADES ANI----------
+  output$TablaRangoEdad <- function(){
+      req(datos())
+      res <- datos() %>%
+        mutate(
+          EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25),
+          RANGO_EDAD = cut(
+            EDAD,
+            breaks = c(18, 25, 32, 40, 50, 60, 100),
+            right = FALSE,
+            include.lowest = TRUE,
+            labels = c("[18-25)", "[25-32)", "[32-40)", "[40-50)", "[50-60)", "[60-100)")
+          )
+        ) %>%
+        group_by(RANGO_EDAD, TIPO) %>%
+        summarise(CONTEO = n(), .groups = "drop") %>%
+        tidyr::pivot_wider(
+          names_from = TIPO,
+          values_from = CONTEO,
+          values_fill = 0
+        ) %>%
+        
+        mutate(TOTAL = rowSums(across(where(is.numeric)))) %>%
+        relocate(TOTAL, .after = RANGO_EDAD) %>%
+        arrange(RANGO_EDAD)
+    
+      res %>%
+        kable(
+          align = "c",
+          caption = "Distribución de Créditos por Rango de Edad y Tipo de Crédito"
+        ) %>%
+        kable_styling(font_size = 11, full_width = FALSE) %>%
+        row_spec(0, background = "#132b60", color = "#ffffff") %>%
+        scroll_box(width = "900px", height = "400px")
+    }
+
+  
   output$CreditosXProv <- function(){
     res02 <- datos() %>% group_by(PROVINCIA_DOMICILIO) %>% summarise(Registros = n()) %>% 
       mutate(PORCENTAJE = percent(Registros/sum(Registros))) %>% arrange(desc(Registros))
@@ -228,3 +267,4 @@ function(input, output, session) {
   
 
 }
+
