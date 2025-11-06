@@ -9,7 +9,7 @@ library(quarto)
 function(input, output, session) {
   
   
-  ##CODIGOGRUPO********************************************************************
+  ##CAMBIOS DE MATEO CODIGO GRUPO ********************************************************************
   output$SelectorTipoCredito <- renderUI({
     req(datos())
     tipos_credito <- unique(datos()$TIPO_CREDITO_OTORGADO)
@@ -68,7 +68,7 @@ function(input, output, session) {
   
   ## ********************************************************************************
  
-  ##CODIGO EN GRUPO********************************************************************
+  ##CAMBIOS DE MATEO CODIGO EN GRUPO ********************************************************************
   output$TiposXProvincia <- function(){
     req(datos())
     
@@ -221,4 +221,5 @@ function(input, output, session) {
     #dplyr::filter(Tipo == "numeric") %>% pull(Variable)
   #selectInput("VarCuan2", "Seleccione la variable:", choices = vars)
 #})
+
 
