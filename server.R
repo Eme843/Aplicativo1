@@ -199,19 +199,6 @@ function(input, output, session) {
         row_spec(0, background = "#132b60", color = "#ffffff") %>%
         scroll_box(width = "900px", height = "400px")
     }
-
-  
-  output$CreditosXProv <- function(){
-    res02 <- datos() %>% group_by(PROVINCIA_DOMICILIO) %>% summarise(Registros = n()) %>% 
-      mutate(PORCENTAJE = percent(Registros/sum(Registros))) %>% arrange(desc(Registros))
-    colnames(res02) <- c("PROVINCIA", "CREDITOS", "PORCENTAJE")
-    res02$CREDITOS = cell_spec(res02$CREDITOS, color = ifelse(res02$CREDITOS <= 100, "red", "blue"))
-    res02$PORCENTAJE <- color_bar("lightgreen")(res02$PORCENTAJE)
-    
-    tab02 <- res02 %>% kable("html", escape = F, booktabs = TRUE) %>% kable_styling(font_size = 11, full_width = FALSE) %>%
-      row_spec(0, background = "#132b60", color = "#ffffff")
-    HTML(tab02)
-  }
   
   archivo <- reactive({
     req(input$file)
@@ -267,4 +254,5 @@ function(input, output, session) {
   
 
 }
+
 
