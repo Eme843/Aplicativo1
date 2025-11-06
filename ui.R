@@ -36,7 +36,7 @@ fluidPage(
       navbarPage("Análisis",
                  tabPanel("Datos",
                           h1("Registros de la base de datos"),
-                          tableOutput("TablaVariable"),
+                          tableOutput("TablaVariableANITA"),
                           hr(),
                           h1("Tabla en Rango de Edades"),
                           tableOutput("TablaRangoEdad"),
@@ -69,3 +69,4 @@ fluidPage(
   )
 
 )
+
