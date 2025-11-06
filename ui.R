@@ -42,7 +42,15 @@ fluidPage(
                           tableOutput("TablaRangoEdad"),
                           hr(),
                           h1("Número de créditos otorgados por Provincia"),
-                          tableOutput("CreditosXProv")
+                          tableOutput("CreditosXProv"),
+                           h1("Filtros para Análisis"),
+                          fluidRow(
+                            column(6, uiOutput("SelectorTipoCredito")),
+                            column(6, uiOutput("SelectorProvincia"))
+                          ),
+                          hr(),
+                          h1("Número de cada tipo de crédito otorgado a cada provincia por nivel de educación"),
+                          tableOutput("TiposXProvincia")
                  ),
                  tabPanel("Gráficos",
                           fluidRow(
@@ -62,11 +70,20 @@ fluidPage(
                                    )
                                    
                           )
-                 )),
+                 )
+                         h1("Filtros para Análisis"),
+                          fluidRow(
+                            column(6, uiOutput("SelectorTipoCreditoGrafico")),
+                            column(6, uiOutput("SelectorProvinciaGrafico"))
+                          ),
+                          hr(),
+                          h1("Histograma Nivel de Educación"),
+                          plotOutput("Graficohistograma")),
                  tabPanel("Informe")
       )
     )
   )
 
 )
+
 
