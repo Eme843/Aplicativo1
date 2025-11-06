@@ -199,7 +199,100 @@ function(input, output, session) {
         row_spec(0, background = "#132b60", color = "#ffffff") %>%
         scroll_box(width = "900px", height = "400px")
     }
+   ##CAMBIOS DE MATEO SELECTORES DE CREDITO Y PROVINCIA PARA GRAFICO Y TABLA ********************************************************************
+  output$SelectorTipoCredito <- renderUI({
+    req(datos())
+    tipos_credito <- unique(datos()$TIPO_CREDITO_OTORGADO)
+    selectInput("tipo_credito", "Seleccione el tipo de crédito:", 
+                choices = c("Todos", tipos_credito), selected = "Todos")
+  })
   
+  output$SelectorProvincia <- renderUI({
+    req(datos())
+    provincias <- unique(datos()$PROVINCIA_DOMICILIO)
+    selectInput("provincia", "Seleccione la provincia:", 
+                choices = c("Todas", provincias), selected = "Todas")
+  })
+  
+  output$SelectorTipoCreditoGrafico <- renderUI({
+    req(datos())
+    tipos_credito <- unique(datos()$TIPO_CREDITO_OTORGADO)
+    selectInput("tipo_creditoGrafico", "Seleccione el tipo de crédito:", 
+                choices = c("Todos", tipos_credito), selected = "Todos")
+  })
+  
+  output$SelectorProvinciaGrafico <- renderUI({
+    req(datos())
+    provincias <- unique(datos()$PROVINCIA_DOMICILIO)
+    selectInput("provinciaGrafico", "Seleccione la provincia:", 
+                choices = c("Todas", provincias), selected = "Todas")
+  })
+  ## CAMBIOS DE MATEO HISTOGRAMA FILTRANDO TIPOS DE CREDITO Y PROVINCIA*************************************************
+  output$Graficohistograma <- renderPlot({
+    req(datos())
+    
+    # Filtrar datos según selecciones
+    datos_filtrados <- datos()
+    
+    if (!is.null(input$tipo_creditoGrafico) && input$tipo_creditoGrafico != "Todos") {
+      datos_filtrados <- datos_filtrados %>% 
+        filter(TIPO_CREDITO_OTORGADO == input$tipo_creditoGrafico)
+    }
+    
+    if (!is.null(input$provinciaGrafico) && input$provinciaGrafico != "Todas") {
+      datos_filtrados <- datos_filtrados %>% 
+        filter(PROVINCIA_DOMICILIO == input$provinciaGrafico)
+    }
+    
+    t03 <- datos_filtrados %>%
+      group_by(NIVEL_EDUCACION) %>%
+      summarise(Cantidad = n(), .groups = 'drop')
+    
+    t03 <- t03 %>% ggplot(aes(x=NIVEL_EDUCACION, y=Cantidad)) + geom_col(fill = input$colx) +
+      geom_text(aes(label = Cantidad), vjust = -0.5, size = 4) +
+      labs(title = "Distribución por Nivel de Educación",
+           x = "Nivel de Educación",
+           y = "Cantidad de Créditos")
+    return(t03)
+  })
+
+  ##CAMBIOS DE FUNCION GENERADORA DE TABLA  ********************************************************************
+  output$TiposXProvincia <- function(){
+    req(datos())
+    
+    # Filtrar datos según selecciones
+    datos_filtrados <- datos()
+    
+    if (!is.null(input$tipo_credito) && input$tipo_credito != "Todos") {
+      datos_filtrados <- datos_filtrados %>% 
+        filter(TIPO_CREDITO_OTORGADO == input$tipo_credito)
+    }
+    
+    if (!is.null(input$provincia) && input$provincia != "Todas") {
+      datos_filtrados <- datos_filtrados %>% 
+        filter(PROVINCIA_DOMICILIO == input$provincia)
+    }
+    
+    res03 <- datos_filtrados %>% 
+      group_by(PROVINCIA_DOMICILIO, TIPO_CREDITO_OTORGADO, NIVEL_EDUCACION) %>% 
+      summarise(Cantidad = n(), .groups = 'drop') %>%
+      mutate(PORCENTAJE=percent(Cantidad/sum(Cantidad))) %>% 
+      arrange(PROVINCIA_DOMICILIO, TIPO_CREDITO_OTORGADO,NIVEL_EDUCACION, desc(Cantidad))
+    
+    colnames(res03) <- c("PROVINCIA", "TIPO_CRÉDITO", "NIVEL_EDUCACIÓN", "CANTIDAD","PORCENTAJE")
+    
+    # Aplicar formato condicional
+    res03$PORCENTAJE <- color_bar("lightgreen")(res03$PORCENTAJE)
+    
+    tab03 <- res03 %>% 
+      kable("html", escape = F, booktabs = TRUE) %>% 
+      kable_styling(font_size = 10, full_width = FALSE) %>%
+      row_spec(0, background = "#132b60", color = "#ffffff") %>%
+      scroll_box(width = "950px", height = "600px")
+    
+    HTML(tab03)
+  }
+## ************************************************************
   archivo <- reactive({
     req(input$file)
     path <- input$file$datapath
@@ -254,6 +347,7 @@ function(input, output, session) {
   
 
 }
+
 
 
 
