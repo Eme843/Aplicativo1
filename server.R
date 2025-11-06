@@ -140,28 +140,28 @@ function(input, output, session) {
   #-------------
 
   #------------------------ PRIMERA TABLA ANI--------------------- 
- output$TablaVariableANITA <- function(){
-    req(datos())  
+  output$TablaVariableANITA <- renderUI({
+    req(datos())
+    
     res01 <- datos() %>%
-      mutate(
+      dplyr::mutate(
+        FECHANACIMIENTO = as.Date(FECHANACIMIENTO),
         EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25)
       ) %>%
-      select(
-        NUM_ID,
-        EDAD,
-        TIPO,
-        NIVEL_EDUCACION
-      )
+      dplyr::select(IDENTIFICACION, EDAD, TIPO, NIVEL_EDUCACION) %>%
+      dplyr::rename(NUM_ID = IDENTIFICACION)
     
-    res01 %>%
-      kable(
+    tabla_html <- res01 %>%
+      knitr::kable(
         align = "c",
-        caption = "Tabla de Edad, Tipo y Nivel Educativo por NUM_ID"
+        caption = "Tabla de Edad, Tipo y Nivel Educativo por Identificación"
       ) %>%
-      kable_styling(font_size = 11, full_width = FALSE) %>%
-      row_spec(0, background = "#132b60", color = "#ffffff") %>%
-      scroll_box(width = "700px", height = "300px")
-  }
+      kableExtra::kable_styling(font_size = 11, full_width = FALSE) %>%
+      kableExtra::row_spec(0, background = "#132b60", color = "#ffffff") %>%
+      kableExtra::scroll_box(width = "700px", height = "300px")
+    
+    HTML(tabla_html)
+  })
 
 
   #----------------RANGO DE EDADES ANI----------
@@ -254,5 +254,6 @@ function(input, output, session) {
   
 
 }
+
 
 
