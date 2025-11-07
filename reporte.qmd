@@ -13,31 +13,64 @@ params:
 
 ```{r}
 #| include: false
-library(tidyverse)
+library(dplyr)
+#library(tidyverse)
 library(readxl)
 library(kableExtra)
 library(formattable)
+library(ggplot2)
+library(lubridate)
+library(RColorBrewer)
 datos <- readRDS(params$data_path)
 ```
 
 ## Informe sobre créditos aperturados en una entidad financiera
 
-El presente informe resume el análisis estadístico de las solicitudes de crédito registradas en la Cooperativa de Ahorro y Crédito “Paquito”. El estudio se centra en cuatro variables principales: **edad** del solicitante, **tipo de crédito**, **provincia de domicilio** y **profesión**, con el propósito de identificar tendencias relevantes en la colocación de créditos y las características predominantes de los usuarios.
+### Introducción
 
-El conjunto de datos analizado contiene un total de `r nrow(datos)` registros, correspondientes a operaciones realizadas entre `r min(datos$FECHAADJUDICACION)` y `r max(datos$FECHAADJUDICACION)`.
+El presente informe presenta el análisis estadístico descriptivo de las solicitudes de crédito otorgadas por la Cooperativa de Ahorro y Crédito “Paquito”, con el propósito de comprender mejor el perfil de los solicitantes, los tipos de crédito más demandados y la distribución de operaciones según provincia, edad y nivel educativo.
+
+El análisis considera las siguientes variables principales:
+
+-   Edad del solicitante, calculada a partir de la fecha de nacimiento.
+
+-   Tipo de crédito solicitado.
+
+-   Provincia de domicilio del beneficiario.
+
+-   Nivel de educación del solicitante.
+
+-   Monto otorgado en cada crédito.
+
+El conjunto de datos analizado contiene `r nrow(datos)` registros, correspondientes a créditos emitidos entre `r min(datos$FECHAADJUDICACION)` y `r max(datos$FECHAADJUDICACION)`.
 
 ### Distribución geográfica de los créditos
 
+El análisis provincial permite identificar las zonas donde la cooperativa mantiene mayor actividad crediticia.
+
 ```{r}
 #| include: false
-res01 <- datos %>% group_by(PROVINCIA_DOMICILIO) %>% summarise(Creditos = n(), Monto = mean(MONTO_OTORGADO)) %>% mutate(Porcentaje = round(100*Creditos/sum(Creditos),2)) %>% arrange(desc(Creditos))
+if (all(c("PROVINCIA_DOMICILIO", "MONTO_OTORGADO") %in% names(datos))){
+  datos <- datos %>%
+    dplyr::mutate(MONTO_OTORGADO =as.numeric(gsub(",", ".",gsub("[^0-9,.-]", "",MONTO_OTORGADO)))
+                  )
+  res01 <- datos %>%dplyr::group_by(PROVINCIA_DOMICILIO) %>%
+    dplyr::summarise(Creditos = n(),Monto = mean(MONTO_OTORGADO, na.rm = TRUE)) %>%
+    dplyr::mutate(Porcentaje = round(100 * Creditos/sum(Creditos), 2)) %>%
+    dplyr::arrange(desc(Creditos))
+  tb01 <- res01 %>%dplyr::arrange(desc(Monto)) %>%
+    dplyr::select(PROVINCIA_DOMICILIO, Monto) %>%
+    dplyr::mutate(Monto = paste("$", round(Monto, 2)))
+
+  colnames(tb01) <- c("Provincia", "Monto")
+} else {
+  stop("Las columnas 'PROVINCIA_DOMICILIO' y/o 'MONTO_OTORGADO' no existen en los datos.")
+  }
 ```
 
 A nivel provincial, se observa una concentración significativa de créditos en las provincias de `r res01$PROVINCIA_DOMICILIO[1]`, `r res01$PROVINCIA_DOMICILIO[2]` y `r res01$PROVINCIA_DOMICILIO[3]`, que en conjunto representan alrededor del `r sum(res01$Porcentaje[1:3])` % del total de operaciones.
 
-Esta concentración puede relacionarse con la ubicación de las agencias principales de la cooperativa y con el nivel de actividad económica de estas provincias. Las provincias con menor número de operaciones registran una participación más baja, lo que sugiere oportunidades de expansión crediticia.
-
-El siguiente cuadro presenta los montos promedio de crédito otorgado por provincia:
+Este comportamiento evidencia la concentración del mercado crediticio en provincias con mayor desarrollo económico o con mayor presencia institucional de la cooperativa.
 
 ```{r}
 #| include: false
@@ -50,39 +83,137 @@ tb01 %>%
 
 ### Análisis etario y comportamiento crediticio
 
-El gráfico de dispersión muestra la relación entre la edad del solicitante y el monto otorgado. La mayor parte de los solicitantes se ubica entre los 25 y 55 años, rango que corresponde a la población económicamente activa.
+La edad de los solicitantes se obtuvo a partir de la fecha de nacimiento, lo que permite analizar el comportamiento crediticio por grupos de edad
+
+```{r}
+#| include: false
+datos <- datos %>% dplyr::mutate(EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO,
+                                                                  units = "days")) / 365.25),
+                                 RANGO_EDAD = cut(EDAD,breaks = c(18, 25, 32, 40, 50, 60, 100),
+                                                  right = FALSE,labels = c("[18-25)", "[25-32)",
+                                                                           "[32-40)", "[40-50)",
+                                                                           "[50-60)", "[60-100)")))
+tabla_edad <- datos %>%dplyr::group_by(RANGO_EDAD, TIPO) %>%
+  dplyr::summarise(CONTEO = n(), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = TIPO, values_from = CONTEO, values_fill = 0) %>%
+  dplyr::mutate(TOTAL = rowSums(dplyr::across(where(is.numeric))))
+```
 
 ```{r}
 #| echo: false
-# Simulación del gráfico de dispersión (Grafico02) dentro del informe
+tabla_edad %>%kable(caption = "Distribución de créditos por rango de edad y tipo de crédito") %>%
+  kable_paper(full_width = F, font_size = 14) %>%
+  row_spec(0, bold = T, color = "white", background = "#132b60")
+```
 
-library(ggplot2)
-library(dplyr)
-library(lubridate)
+La mayor concentración de operaciones se encuentra entre los 25 y 50 años, segmento que corresponde a la población económicamente activa.
+Los tipos de crédito más comunes en este grupo son los microcréditos estándar y los microcréditos AAA, que suelen destinarse al emprendimiento y consumo productivo.
 
-# Verificar que existan las columnas requeridas
-if (all(c("FECHANACIMIENTO", "MONTO_OTORGADO") %in% names(datos))) {
-  
-  # Calcular edad en años
-  t02 <- datos %>%
-    mutate(EDAD = as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25) %>%
-    filter(!is.na(EDAD), !is.na(MONTO_OTORGADO))
-  
-  # Crear gráfico
-  ggplot(t02, aes(x = EDAD, y = MONTO_OTORGADO)) +
-    geom_point(color = "#132b60", alpha = 0.6, size = 3) +
-    labs(title = "Relación entre Edad del Solicitante y Monto Otorgado",
-         x = "Edad (años)",
-         y = "Monto otorgado") +
-    theme_minimal(base_size = 13) +
+### Relación entre edad y monto otorgado
+
+```{r}
+#| echo: false
+if (all(c("FECHANACIMIENTO", "MONTO_OTORGADO") %in% names(datos)))
+  {ggplot(datos, aes(x = EDAD, y = MONTO_OTORGADO)) +geom_point(color = params$color_param, alpha =0.6, size = 3) +
+    labs(title = "Relación entre Edad del Solicitante y Monto Otorgado",x = "Edad (años)", 
+         y = "Monto otorgado (USD)") +theme_minimal(base_size = 13) +
     theme(plot.title = element_text(hjust = 0.5, color = "#132b60", face = "bold"))
+  }
+```
+
+El gráfico muestra que no existe una relación lineal entre la edad y el monto otorgado.
+Esto significa que tanto jóvenes como adultos acceden a créditos en montos similares, lo cual sugiere que el valor del préstamo depende más de la capacidad económica e historial crediticio que de la edad del solicitante.
+
+### Tipología de créditos por provincia
+
+Se analizó la composición de los tipos de crédito en las provincias con mayor actividad.
+A continuación se muestra un ejemplo para la provincia de `r res01$PROVINCIA_DOMICILIO[1]`:
+
+```{r}
+#| echo: false
+prov_ref <- res01$PROVINCIA_DOMICILIO[1]
+datos_filtrados <- datos %>% dplyr::filter(PROVINCIA_DOMICILIO == prov_ref)
+
+tabla_tipos <- table(datos_filtrados$TIPO)
+porcentajes <- round(100 * tabla_tipos / sum(tabla_tipos), 1)
+etiquetas <- paste0(porcentajes, "%")
+colores <- RColorBrewer::brewer.pal(n = length(tabla_tipos), "Set3")
+
+
+par(mar = c(1, 1, 2, 6))
+pie(
+  tabla_tipos,
+  labels = etiquetas,
+  col = colores,
+  main = paste("Distribución de tipos de crédito en", toupper(prov_ref)),
+  cex = 0.9,
+  border = "black"
+)
+
+legend(
+  "topright",
+  legend = names(tabla_tipos),
+  fill = colores,
+  title = "Tipo de Crédito",
+  cex = 0.8,
+  bty = "n",
+  inset = c(-0.25, 0)
+)
+```
+
+La provincia analizada muestra una fuerte presencia de microcréditos estándar y AAA, lo que confirma su importancia dentro del portafolio de productos financieros de la cooperativa.
+
+### Nivel educativo de los solicitantes
+
+El nivel educativo constituye un indicador importante del perfil crediticio.
+En la siguiente tabla se presenta la relación entre nivel educativo y tipo de crédito solicitado.
+
+
+```{r}
+#| echo: false
+if ("NIVEL_EDUCACION" %in% names(datos))
+  {
+  tabla_edu <- datos %>% dplyr::group_by(NIVEL_EDUCACION, TIPO) %>%
+    dplyr::summarise(CONTEO = n(), .groups = "drop") %>%
+    tidyr::pivot_wider(names_from = TIPO, values_from = CONTEO, values_fill = 0)
   
-} else {
-  plot.new()
-  text(0.5, 0.5, "No se encontraron las columnas FECHANACIMIENTO y MONTO_OTORGADO en los datos.")
+  tabla_edu %>%
+    kable(caption = "Distribución de créditos por nivel educativo y tipo de crédito") %>%
+    kable_paper(full_width = F, font_size = 13) %>%
+    row_spec(0, bold = T, color = "white", background = "#132b60")
 }
 ```
 
-Se observa que los montos otorgados no presentan una relación lineal con la edad: tanto personas jóvenes como adultas acceden a montos similares. Esto sugiere que el monto del crédito depende más de factores como la capacidad de pago, el tipo de crédito solicitado o el historial financiero que de la edad del solicitante.
+Los resultados indican que los solicitantes con educación media o superior son los más representativos, lo que sugiere una correlación entre el nivel educativo, la estabilidad laboral y el acceso al crédito.
 
-Este resultado es positivo, ya que evidencia equidad en la política crediticia de la cooperativa, al no restringir el acceso a grupos etarios específicos.
+
+```{r}
+#| echo: false
+edu_plot <- datos %>% dplyr::group_by(NIVEL_EDUCACION) %>%
+  dplyr::summarise(Cantidad = n(), .groups = "drop")
+
+ggplot(edu_plot, aes(x = NIVEL_EDUCACION, y = Cantidad)) +geom_col(fill = params$color_param) +
+  geom_text(aes(label = Cantidad), vjust = -0.5, size = 4) +
+  labs(title = "Distribución de créditos por nivel educativo",
+       x = "Nivel educativo", y = "Cantidad de créditos") +
+  theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, color = "#132b60", face = "bold"))
+```
+
+### Conclusiones generales
+
+- **Concentración geográfica**:
+Las provincias con mayor desarrollo económico concentran la mayoría de los créditos.
+Esto sugiere que la cooperativa podría fortalecer su presencia en zonas con menor cobertura.
+
+- **Segmento etario activo**:
+Los solicitantes entre 25 y 50 años representan el principal grupo de demanda crediticia,lo cual es coherente con la población económicamente activa.
+
+- **Equidad crediticia**:
+No existe una relación directa entre edad y monto otorgado, lo que refleja una política crediticia inclusiva y equitativa.
+
+- **Predominio de microcréditos**:
+Los productos financieros más frecuentes son los microcréditos estándar y AAA, lo que resalta el enfoque de apoyo al microemprendimiento.
+
+- **Educación y acceso**:
+Los clientes con educación media o superior muestran una mayor participación, evidenciando que la formación académica contribuye a un mejor acceso financiero.
