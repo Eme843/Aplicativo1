@@ -1,2 +1,9 @@
 # Aplicativo1
-Aplicativo web de la materia de Simulación 2025B
+**Deber grupal:** Diseñar un aplicativo web
+
+**Asignatura:** Simulación 2025B
+
+**Integrantes:**
+- Ana Aldás
+- Mateo Iniquinga
+- Emely Torres
