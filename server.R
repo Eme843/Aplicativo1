@@ -1,53 +1,24 @@
 library(shiny)
-library(tidyverse)
+library(dplyr)
+#library(tidyverse)
 library(readxl)
 library(kableExtra)
 library(formattable)
 library(lubridate)
-library(MASS)
 library(RColorBrewer)
-library(quarto)
+library(ggplot2)
+library(rmarkdown)
+#library(quarto)
 
 # Define server logic required to draw a histogram
 function(input, output, session) {
   
-  output$VarCualitativa <- renderUI({
-    vars <- data.frame(Variable = names(datos()), 
-                       Tipo = unname(unlist(sapply(datos(), function(j){class(j)[1]})))) %>% 
-      dplyr::filter(Tipo == "character") %>% pull(Variable)
-    selectInput("VarCual", "Seleccione la variable:", choices = vars)
-  })
-  
-  output$VarCuantitativa <- renderUI({
-    vars <- data.frame(Variable = names(datos()), 
-                       Tipo = unname(unlist(sapply(datos(), function(j){class(j)[1]})))) %>% 
-      dplyr::filter(Tipo == "numeric") %>% pull(Variable)
-    selectInput("VarCuan", "Seleccione la variable:", choices = vars)
-  })
-  output$VarCuantitativa2 <- renderUI({
-    vars <- data.frame(Variable = names(datos()), 
-                       Tipo = unname(unlist(sapply(datos(), function(j){class(j)[1]})))) %>% 
-      dplyr::filter(Tipo == "numeric") %>% pull(Variable)
-    selectInput("VarCuan2", "Seleccione la variable:", choices = vars)
-  })
-  
-  output$Grafico01 <- renderPlot({
-    t01 <- datos() %>% select(input$VarCual)
-    colnames(t01) <- "Variable"
-    
-    t01 <- t01 %>% group_by(Variable) %>% summarise(Registros = n()) %>% 
-      ggplot(aes(x=Variable, y=Registros)) + geom_col(fill = input$colx)
-    return(t01)
-  })
-  
   # ==== EMELY  
   #======GRÁFICO DE DISPERSIÓN: Edad vs. Monto Otorgado ====
   output$Grafico02 <- renderPlot({
-  
-    # Verificamos que las variables existan
+    
     req("FECHANACIMIENTO" %in% names(datos()), "MONTO_OTORGADO" %in% names(datos()))
     
-    # Crear variable edad (en años)
     t02 <- datos() %>%
       mutate(EDAD = as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25) %>%
       filter(!is.na(EDAD), !is.na(MONTO_OTORGADO))
@@ -75,27 +46,23 @@ function(input, output, session) {
   output$Grafico03 <- renderPlot({
     req(input$provincia_sel)
     
-    # Filtrar por provincia seleccionada
     datos_filtrados <- datos() %>%
       filter(PROVINCIA_DOMICILIO == input$provincia_sel)
     
-    # Crear tabla de frecuencias por tipo de crédito
     tabla_tipos <- table(datos_filtrados$TIPO)
     
-    # Validar que existan datos
     validate(
       need(length(tabla_tipos) > 0, "No existen registros para la provincia seleccionada.")
     )
     
     # Calcular porcentajes
     porcentajes <- round(100 * tabla_tipos / sum(tabla_tipos), 1)
-    etiquetas <- paste0(porcentajes, "%")  # ← solo el porcentajeetas <- paste0(names(tabla_tipos), " (", porcentajes, "%)")
+    etiquetas <- paste0(porcentajes, "%")  
     
-    # Colores suaves tipo pastel
     colores_pastel <- brewer.pal(n = length(tabla_tipos), "Set3")
-  
-  # Ajustar márgenes para dejar espacio a la derecha
-     par(mar = c(1, 1, 2, 1))  # margen derecho grande para la leyenda
+    
+    
+    par(mar = c(1, 1, 2, 1))
     
     # Crear gráfico de pastel base
     pie(tabla_tipos,
@@ -104,7 +71,7 @@ function(input, output, session) {
         main = paste("Distribución de tipos de crédito en", toupper(input$provincia_sel)),
         cex = 0.9,
         border = "black")
-    })
+  })
   
   output$LeyendaPastel <- renderUI({
     req(input$provincia_sel)
@@ -137,8 +104,8 @@ function(input, output, session) {
   })
   
   
-  #-------------
-
+  #====== Ana
+  
   #------------------------ PRIMERA TABLA ANI--------------------- 
   output$TablaVariableANITA <- renderUI({
     req(datos())
@@ -162,44 +129,45 @@ function(input, output, session) {
     
     HTML(tabla_html)
   })
-
-
+  
   #----------------RANGO DE EDADES ANI----------
   output$TablaRangoEdad <- function(){
-      req(datos())
-      res <- datos() %>%
-        mutate(
-          EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25),
-          RANGO_EDAD = cut(
-            EDAD,
-            breaks = c(18, 25, 32, 40, 50, 60, 100),
-            right = FALSE,
-            include.lowest = TRUE,
-            labels = c("[18-25)", "[25-32)", "[32-40)", "[40-50)", "[50-60)", "[60-100)")
-          )
-        ) %>%
-        group_by(RANGO_EDAD, TIPO) %>%
-        summarise(CONTEO = n(), .groups = "drop") %>%
-        tidyr::pivot_wider(
-          names_from = TIPO,
-          values_from = CONTEO,
-          values_fill = 0
-        ) %>%
-        
-        mutate(TOTAL = rowSums(across(where(is.numeric)))) %>%
-        relocate(TOTAL, .after = RANGO_EDAD) %>%
-        arrange(RANGO_EDAD)
+    req(datos())
+    res <- datos() %>%
+      mutate(
+        EDAD = floor(as.numeric(difftime(Sys.Date(), FECHANACIMIENTO, units = "days")) / 365.25),
+        RANGO_EDAD = cut(
+          EDAD,
+          breaks = c(18, 25, 32, 40, 50, 60, 100),
+          right = FALSE,
+          include.lowest = TRUE,
+          labels = c("[18-25)", "[25-32)", "[32-40)", "[40-50)", "[50-60)", "[60-100)")
+        )
+      ) %>%
+      group_by(RANGO_EDAD, TIPO) %>%
+      summarise(CONTEO = n(), .groups = "drop") %>%
+      tidyr::pivot_wider(
+        names_from = TIPO,
+        values_from = CONTEO,
+        values_fill = 0
+      ) %>%
+      
+      mutate(TOTAL = rowSums(across(where(is.numeric)))) %>%
+      relocate(TOTAL, .after = RANGO_EDAD) %>%
+      arrange(RANGO_EDAD)
     
-      res %>%
-        kable(
-          align = "c",
-          caption = "Distribución de Créditos por Rango de Edad y Tipo de Crédito"
-        ) %>%
-        kable_styling(font_size = 11, full_width = FALSE) %>%
-        row_spec(0, background = "#132b60", color = "#ffffff") %>%
-        scroll_box(width = "900px", height = "400px")
-    }
-   ##CAMBIOS DE MATEO SELECTORES DE CREDITO Y PROVINCIA PARA GRAFICO Y TABLA ********************************************************************
+    res %>%
+      kable(
+        align = "c",
+        caption = "Distribución de Créditos por Rango de Edad y Tipo de Crédito"
+      ) %>%
+      kable_styling(font_size = 11, full_width = FALSE) %>%
+      row_spec(0, background = "#132b60", color = "#ffffff") %>%
+      scroll_box(width = "900px", height = "400px")
+  }
+  
+  #======== Mateo
+  #SELECTORES DE CREDITO Y PROVINCIA PARA GRAFICO Y TABLA ********************************************************************
   output$SelectorTipoCredito <- renderUI({
     req(datos())
     tipos_credito <- unique(datos()$TIPO_CREDITO_OTORGADO)
@@ -227,7 +195,9 @@ function(input, output, session) {
     selectInput("provinciaGrafico", "Seleccione la provincia:", 
                 choices = c("Todas", provincias), selected = "Todas")
   })
-  ## CAMBIOS DE MATEO HISTOGRAMA FILTRANDO TIPOS DE CREDITO Y PROVINCIA*************************************************
+  
+  
+  # -----------HISTOGRAMA FILTRANDO TIPOS DE CREDITO Y PROVINCIA
   output$Graficohistograma <- renderPlot({
     req(datos())
     
@@ -255,12 +225,11 @@ function(input, output, session) {
            y = "Cantidad de Créditos")
     return(t03)
   })
-
-  ##CAMBIOS DE FUNCION GENERADORA DE TABLA  ********************************************************************
+  
+  ##-------------CAMBIOS DE FUNCION GENERADORA DE TABLA  
   output$TiposXProvincia <- function(){
     req(datos())
     
-    # Filtrar datos según selecciones
     datos_filtrados <- datos()
     
     if (!is.null(input$tipo_credito) && input$tipo_credito != "Todos") {
@@ -281,7 +250,6 @@ function(input, output, session) {
     
     colnames(res03) <- c("PROVINCIA", "TIPO_CRÉDITO", "NIVEL_EDUCACIÓN", "CANTIDAD","PORCENTAJE")
     
-    # Aplicar formato condicional
     res03$PORCENTAJE <- color_bar("lightgreen")(res03$PORCENTAJE)
     
     tab03 <- res03 %>% 
@@ -292,7 +260,8 @@ function(input, output, session) {
     
     HTML(tab03)
   }
-## ************************************************************
+  ## ------------------------------
+  
   archivo <- reactive({
     req(input$file)
     path <- input$file$datapath
@@ -315,29 +284,22 @@ function(input, output, session) {
       paste0("Informe_Estadistico_", Sys.Date(), ".html")
     },
     content = function(file) {
+      req(datos())  
+      
       temp_data <- tempfile(fileext = ".rds")
       saveRDS(datos(), temp_data)
       
-      # Obtener las variables de entrada que definen los gráficos
-      var_cual <- input$VarCual
-      var_cuan1 <- input$VarCuan
-      var_cuan2 <- input$VarCuan2
-      color <- input$colx
-      
       qmd_path <- normalizePath("reporte.qmd")
-      temp_rmd <- tempfile(fileext = ".Rmd")
-      
-      # Convertir QMD a RMD temporal
-      file.copy(qmd_path, temp_rmd, , overwrite = TRUE)
       
       rmarkdown::render(
-        input = temp_rmd,
+        input = qmd_path,
         output_file = file,
-        params = list(data_path = temp_data,
-                      var_cual_param = var_cual, # Variable cualitativa
-                      var_cuan1_param = var_cuan1, # Variable cuantitativa 1
-                      var_cuan2_param = var_cuan2, # Variable cuantitativa 2
-                      color_param = color # Color
+        params = list(
+          data_path = temp_data,
+          var_cual_param = input$VarCual,
+          var_cuan1_param = input$VarCuan,
+          var_cuan2_param = input$VarCuan2,
+          color_param = input$colx
         ),
         envir = new.env(parent = globalenv())
       )
@@ -345,9 +307,4 @@ function(input, output, session) {
   )
   
   
-
 }
-
-
-
-
